@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     private val POI_ACTIVITY = 1
     private val USER_ACTIVITY = 2
     private lateinit var fusedLocationClient : FusedLocationProviderClient
+    val REQUEST_ENABLE_BT = 3
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
@@ -79,7 +80,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         val bluetoothAdapter = bluetoothManager.adapter
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            val REQUEST_ENABLE_BT = 0
+
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
         }
         super.onCreate(savedInstanceState)
