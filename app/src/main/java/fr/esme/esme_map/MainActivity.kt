@@ -1,14 +1,18 @@
 package fr.esme.esme_map
 
+import fr.esme.esme_map.LeDeviceListAdapter
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
@@ -24,7 +28,6 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
-import com.squareup.picasso.Picasso
 import fr.esme.esme_map.dao.AppDatabase
 import fr.esme.esme_map.interfaces.UserClickInterface
 import fr.esme.esme_map.model.POI
@@ -41,8 +44,31 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
     private val POI_ACTIVITY = 1
     private val USER_ACTIVITY = 2
+    private val bluetoothLeScanner = BluetoothAdapter.getDefaultAdapter().bluetoothLeScanner
+    private var mScanning = false
+    private val handler = Handler()
+    private val REQUEST_ENABLE_BT = 0
+    // Stops scanning after 10 seconds.
+    private val SCAN_PERIOD: Long = 10000
     private lateinit var fusedLocationClient : FusedLocationProviderClient
-    val REQUEST_ENABLE_BT = 3
+
+    private val leDeviceListAdapter: LeDeviceListAdapter? = null
+
+    // Device scan callback.
+    private val leScanCallback: ScanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+            super.onScanResult(callbackType, result)
+            leDeviceListAdapter!!.addDevice(result.device)
+            leDeviceListAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun scanLeDevice() {
+
+    }
+
+
+
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
@@ -66,13 +92,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
+
         if (requestCode == POI_ACTIVITY) {
             var t = data?.getStringExtra("poi")
             var poi = Gson().fromJson<POI>(t, POI::class.java)
             viewModel.savePOI(poi)
             showPOI(Gson().fromJson<POI>(t, POI::class.java))
         }
+
     }
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,7 +109,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         val bluetoothAdapter = bluetoothManager.adapter
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
         }
         super.onCreate(savedInstanceState)
@@ -90,7 +118,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
         //button
         findViewById<FloatingActionButton>(R.id.showFriendsButton).setOnClickListener {
+
             manageUserVisibility()
+
         }
 
         //MAP
@@ -203,22 +233,31 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
     //TODO show USer
     fun manageUserVisibility() {
+        if (!mScanning) { // Stops scanning after a pre-defined scan period.
+            handler.postDelayed({
+                mScanning = false
+                bluetoothLeScanner.stopScan(leScanCallback)
+                Log.d(TAG, "je passe bien dans le scann1")
+
+            }, SCAN_PERIOD)
+            mScanning = true
+            bluetoothLeScanner.startScan(leScanCallback)
+        } else {
+            Log.d(TAG, "je passe bien dans le scann2")
+            mScanning = false
+            bluetoothLeScanner.stopScan(leScanCallback)
+        }
 
         if (isFriendShow) {
             isFriendShow = false
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.INVISIBLE
         } else {
             isFriendShow = true
-
-            var friends = viewModel.getUsers()
-
-            val adapter = FriendsAdapter(this, ArrayList(friends))
-            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = adapter
-
-
+            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = leDeviceListAdapter
+            Log.d(TAG, "je suis dans le bouton")
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
         }
-    }
+        }
 
     override fun onStart() {
         super.onStart()
@@ -266,6 +305,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
 
     }
+
 
 
 
