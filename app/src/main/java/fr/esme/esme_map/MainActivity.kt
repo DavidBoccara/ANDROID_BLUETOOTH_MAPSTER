@@ -1,10 +1,15 @@
 package fr.esme.esme_map
 
+
 import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothServerSocket
+import android.bluetooth.BluetoothSocket
+import android.content.ContentValues
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,11 +18,18 @@ import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.View.inflate
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ListView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.res.ColorStateListInflaterCompat.inflate
+import androidx.core.graphics.drawable.DrawableCompat.inflate
 import androidx.fragment.app.DialogFragment
 import androidx.room.Room
 import com.google.android.gms.location.*
@@ -34,6 +46,7 @@ import fr.esme.esme_map.interfaces.UserClickInterface
 import fr.esme.esme_map.model.POI
 import fr.esme.esme_map.model.Position
 import fr.esme.esme_map.model.User
+import java.io.IOException
 import java.lang.Exception
 import java.util.*
 
@@ -41,10 +54,9 @@ var devices = java.util.ArrayList<BluetoothDevice>()
 var devicesMap = HashMap<String, BluetoothDevice>()
 var mArrayAdapter: ArrayAdapter<String>? = null
 val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
-var message = ""
+var message = "dxxdsxsd"
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface {
-
     private val TAG = MainActivity::class.qualifiedName
     private lateinit var mMap: GoogleMap
     private lateinit var viewModel: MainActivityViewModel
@@ -83,12 +95,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     }
 
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
 
         setContentView(R.layout.activity_main)
         mArrayAdapter = ArrayAdapter(this, R.layout.dialog_select_device)
+
         //button
         findViewById<FloatingActionButton>(R.id.showFriendsButton).setOnClickListener {view ->
             if (BluetoothAdapter.getDefaultAdapter() == null) {
@@ -209,23 +224,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     //TODO show Travel
 
     //TODO show USer
+
+
     fun manageUserVisibility() {
         devicesMap = HashMap()
-        devices = java.util.ArrayList()
+        devices = ArrayList()
         mArrayAdapter!!.clear()
-
-
-        if (isFriendShow) {
-            isFriendShow = false
-            findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.INVISIBLE
-        } else {
-            isFriendShow = true
-
-
-
-
-            findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
-        }
 
         message = "dd"
 
@@ -239,14 +243,34 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
         }
 
-
-
         // Start discovery process
         if (BluetoothAdapter.getDefaultAdapter().startDiscovery()) {
+            Log.d(TAG,"je suis dans le send ")
             val dialog = SelectDeviceDialog()
+
             dialog.show(supportFragmentManager, "select_device")
         }
-    findViewById<ListView>(R.id.friendsListRecyclerview).adapter = mArrayAdapter
+
+
+
+        if (isFriendShow) {
+            isFriendShow = false
+            findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.INVISIBLE
+        } else {
+            isFriendShow = true
+
+
+
+
+            findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
+            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = mArrayAdapter
+
+
+
+            BluetoothServerController(this).start()
+        }
+
+
     }
 
     override fun onStart() {
@@ -284,7 +308,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
     override fun OnUserClick(user: User) {
 
-        Log.d("ADAPTER", user.username)
+        Log.d("ADAPTER", "test")
 
         val intent = Intent(this, UserActivity::class.java).apply {
             putExtra("USER", Gson().toJson(user))
@@ -335,6 +359,74 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
             outputStream.close()
             inputStream.close()
             this.socket.close()
+        }
+    }
+}
+
+class BluetoothServerController(activity: MainActivity) : Thread() {
+    private var cancelled: Boolean
+    private val serverSocket: BluetoothServerSocket?
+    private val activity = activity
+
+    init {
+        val btAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (btAdapter != null) {
+            this.serverSocket = btAdapter.listenUsingRfcommWithServiceRecord("test", uuid)
+            this.cancelled = false
+        } else {
+            this.serverSocket = null
+            this.cancelled = true
+        }
+
+    }
+
+    override fun run() {
+        var socket: BluetoothSocket
+
+        while(true) {
+            if (this.cancelled) {
+                break
+            }
+
+            try {
+                socket = serverSocket!!.accept()
+            } catch(e: IOException) {
+                break
+            }
+
+            if (!this.cancelled && socket != null) {
+                Log.i("server", "Connecting")
+                BluetoothServer(this.activity, socket).start()
+            }
+        }
+    }
+
+    fun cancel() {
+        this.cancelled = true
+        this.serverSocket!!.close()
+    }
+}
+
+class BluetoothServer(private val activity: MainActivity, private val socket: BluetoothSocket): Thread() {
+    private val inputStream = this.socket.inputStream
+    private val outputStream = this.socket.outputStream
+
+    override fun run() {
+        try {
+            val available = inputStream.available()
+            val bytes = ByteArray(available)
+            Log.i("server", "Reading")
+            inputStream.read(bytes, 0, available)
+            val text = String(bytes)
+            Log.i("server", "Message received")
+            Log.i("server", text)
+            //activity.appendText(text)
+        } catch (e: Exception) {
+            Log.e("client", "Cannot read data", e)
+        } finally {
+            inputStream.close()
+            outputStream.close()
+            socket.close()
         }
     }
 }

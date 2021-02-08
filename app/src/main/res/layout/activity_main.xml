@@ -28,7 +28,8 @@
         <ListView
             android:id="@+id/friendsListRecyclerview"
             android:layout_width="100dp"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:background="@android:color/black"/>
 
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -44,6 +45,15 @@
             app:layout_constraintRight_toRightOf="parent" />
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TextView"
+        tools:layout_editor_absoluteX="186dp"
+        tools:layout_editor_absoluteY="583dp"
+        tools:ignore="MissingConstraints" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
