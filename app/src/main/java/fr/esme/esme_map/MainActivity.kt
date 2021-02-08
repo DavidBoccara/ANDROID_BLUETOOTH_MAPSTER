@@ -1,24 +1,24 @@
 package fr.esme.esme_map
 
-import fr.esme.esme_map.LeDeviceListAdapter
 import android.Manifest
+import android.app.AlertDialog
+import android.app.Dialog
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.content.Context
+import android.bluetooth.BluetoothDevice
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
-import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.fragment.app.DialogFragment
 import androidx.room.Room
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -27,12 +27,21 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import fr.esme.esme_map.dao.AppDatabase
 import fr.esme.esme_map.interfaces.UserClickInterface
 import fr.esme.esme_map.model.POI
 import fr.esme.esme_map.model.Position
 import fr.esme.esme_map.model.User
+import java.lang.Exception
+import java.util.*
+
+var devices = java.util.ArrayList<BluetoothDevice>()
+var devicesMap = HashMap<String, BluetoothDevice>()
+var mArrayAdapter: ArrayAdapter<String>? = null
+val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
+var message = ""
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface {
 
@@ -40,35 +49,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     private lateinit var mMap: GoogleMap
     private lateinit var viewModel: MainActivityViewModel
     private var isFriendShow = true
-
-
     private val POI_ACTIVITY = 1
     private val USER_ACTIVITY = 2
-    private val bluetoothLeScanner = BluetoothAdapter.getDefaultAdapter().bluetoothLeScanner
-    private var mScanning = false
-    private val handler = Handler()
-    private val REQUEST_ENABLE_BT = 0
-    // Stops scanning after 10 seconds.
-    private val SCAN_PERIOD: Long = 10000
     private lateinit var fusedLocationClient : FusedLocationProviderClient
-
-    private val leDeviceListAdapter: LeDeviceListAdapter? = null
-
-    // Device scan callback.
-    private val leScanCallback: ScanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            super.onScanResult(callbackType, result)
-            leDeviceListAdapter!!.addDevice(result.device)
-            leDeviceListAdapter.notifyDataSetChanged()
-        }
-    }
-
-    private fun scanLeDevice() {
-
-    }
-
-
-
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
@@ -76,7 +59,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         viewModel.getPositionFromViewModel()
 
         mMap.setOnMapClickListener {
-
 
             val intent = Intent(this, CreatePOIActivity::class.java).apply {
                 putExtra("LATLNG", it)
@@ -92,34 +74,29 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-
         if (requestCode == POI_ACTIVITY) {
             var t = data?.getStringExtra("poi")
             var poi = Gson().fromJson<POI>(t, POI::class.java)
             viewModel.savePOI(poi)
             showPOI(Gson().fromJson<POI>(t, POI::class.java))
         }
-
     }
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        val bluetoothAdapter = bluetoothManager.adapter
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
-        }
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
 
         setContentView(R.layout.activity_main)
-
+        mArrayAdapter = ArrayAdapter(this, R.layout.dialog_select_device)
         //button
-        findViewById<FloatingActionButton>(R.id.showFriendsButton).setOnClickListener {
-
-            manageUserVisibility()
+        findViewById<FloatingActionButton>(R.id.showFriendsButton).setOnClickListener {view ->
+            if (BluetoothAdapter.getDefaultAdapter() == null) {
+                Snackbar.make(view, "Bluetooth is disabled", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show()}
+            else{
+                manageUserVisibility()
+            }
 
         }
 
@@ -157,15 +134,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
                 this,
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
-       ) {
+        ) {
 
-           this.requestPermissions(
-               arrayOf<String>(
-                   Manifest.permission.ACCESS_FINE_LOCATION,
-                   Manifest.permission.ACCESS_COARSE_LOCATION
-               ), 1
-           )
-       }
+            this.requestPermissions(
+                arrayOf<String>(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ), 1
+            )
+        }
 
         val locationRequest = LocationRequest.create()?.apply {
             interval = 10000
@@ -233,31 +210,44 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
     //TODO show USer
     fun manageUserVisibility() {
-        if (!mScanning) { // Stops scanning after a pre-defined scan period.
-            handler.postDelayed({
-                mScanning = false
-                bluetoothLeScanner.stopScan(leScanCallback)
-                Log.d(TAG, "je passe bien dans le scann1")
+        devicesMap = HashMap()
+        devices = java.util.ArrayList()
+        mArrayAdapter!!.clear()
 
-            }, SCAN_PERIOD)
-            mScanning = true
-            bluetoothLeScanner.startScan(leScanCallback)
-        } else {
-            Log.d(TAG, "je passe bien dans le scann2")
-            mScanning = false
-            bluetoothLeScanner.stopScan(leScanCallback)
-        }
 
         if (isFriendShow) {
             isFriendShow = false
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.INVISIBLE
         } else {
             isFriendShow = true
-            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = leDeviceListAdapter
-            Log.d(TAG, "je suis dans le bouton")
+
+
+
+
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
         }
+
+        message = "dd"
+
+        for (device in BluetoothAdapter.getDefaultAdapter().bondedDevices) {
+            devicesMap.put(device.address, device)
+            devices.add(device)
+            // Add the name and address to an array adapter to show in a ListView
+            mArrayAdapter!!.add((if (device.name != null) device.name else "Unknown") + "\n" + device.address + "\nPared")
+            Log.d(TAG, "je scann")
+            Log.d(TAG, mArrayAdapter.toString())
+
         }
+
+
+
+        // Start discovery process
+        if (BluetoothAdapter.getDefaultAdapter().startDiscovery()) {
+            val dialog = SelectDeviceDialog()
+            dialog.show(supportFragmentManager, "select_device")
+        }
+    findViewById<ListView>(R.id.friendsListRecyclerview).adapter = mArrayAdapter
+    }
 
     override fun onStart() {
         super.onStart()
@@ -305,8 +295,46 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
 
     }
+}
+class SelectDeviceDialog: DialogFragment() {
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val builder = AlertDialog.Builder(this.activity)
+        builder.setTitle("Send message to")
+        builder.setAdapter(mArrayAdapter) { _, which: Int ->
+            BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
+            BluetoothClient(devices[which]).start()
 
+        }
 
+        return builder.create()
+    }
 
+    override fun onCancel(dialog: DialogInterface) {
+        super.onCancel(dialog)
+    }
+}
+class BluetoothClient(device: BluetoothDevice): Thread() {
+    private val socket = device.createRfcommSocketToServiceRecord(uuid)
 
+    override fun run() {
+
+        Log.i("client", "Connecting")
+        Log.i("client", "send to :"+devices.toString())
+        this.socket.connect()
+
+        Log.i("client", "Sending")
+        val outputStream = this.socket.outputStream
+        val inputStream = this.socket.inputStream
+        try {
+            outputStream.write(message.toByteArray())
+            outputStream.flush()
+            Log.i("client", "Sent")
+        } catch(e: Exception) {
+            Log.e("client", "Cannot send", e)
+        } finally {
+            outputStream.close()
+            inputStream.close()
+            this.socket.close()
+        }
+    }
 }

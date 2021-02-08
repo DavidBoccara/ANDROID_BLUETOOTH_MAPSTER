@@ -45,33 +45,5 @@
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/device_address"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="424dp" />
-
-    <TextView
-        android:id="@+id/device_name"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="506dp" />
-
-    <TextView
-        android:id="@+id/unknow_device"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="460dp" />
-
-    <TextView
-        android:id="@+id/list_item_device"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="0dp"
-        tools:layout_editor_absoluteY="547dp" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>
