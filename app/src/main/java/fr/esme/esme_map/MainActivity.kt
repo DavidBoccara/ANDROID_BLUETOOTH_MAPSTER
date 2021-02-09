@@ -56,6 +56,7 @@ var devicesMap = HashMap<String, BluetoothDevice>()
 var mArrayAdapter: ArrayAdapter<String>? = null
 val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
 var message = ""
+var statei = 0
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface {
     private val TAG = MainActivity::class.qualifiedName
@@ -114,6 +115,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
                 manageUserVisibility()
             }
 
+        }
+        if (statei == 0){
+            BluetoothServerController(this).start()
+            statei = 1
         }
 
         //MAP
@@ -239,7 +244,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
             devices.add(device)
             // Add the name and address to an array adapter to show in a ListView
             mArrayAdapter!!.add((if (device.name != null) device.name else "Unknown") + "\n" + device.address + "\nPared")
-            Log.d(TAG, "je scann")
             Log.d(TAG, mArrayAdapter.toString())
 
         }
@@ -263,7 +267,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
             val adapter = FriendsAdapter(this, ArrayList(friends))
             findViewById<ListView>(R.id.friendsListRecyclerview).adapter = adapter
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
-            BluetoothServerController(this).start()
+            //BluetoothServerController(this).start()
         }
 
 
@@ -334,6 +338,7 @@ class SelectDeviceDialog: DialogFragment() {
     }
 }
 class BluetoothClient(device: BluetoothDevice): Thread() {
+
     private val socket = device.createRfcommSocketToServiceRecord(uuid)
 
     override fun run() {
@@ -345,11 +350,13 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
         Log.i("client", "Sending")
         val outputStream = this.socket.outputStream
         val inputStream = this.socket.inputStream
+
         try {
 
             outputStream.write(mmBuffer)
             outputStream.flush()
             Log.i("client", "Sent")
+            statei=0
         } catch(e: Exception) {
             Log.e("client", "Cannot send", e)
         } finally {
@@ -358,6 +365,7 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
             this.socket.close()
         }
     }
+
 }
 
 class BluetoothServerController(activity: MainActivity) : Thread() {
