@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.content.ContentValues
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
@@ -54,7 +55,7 @@ var devices = java.util.ArrayList<BluetoothDevice>()
 var devicesMap = HashMap<String, BluetoothDevice>()
 var mArrayAdapter: ArrayAdapter<String>? = null
 val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
-var message = "dxxdsxsd"
+var message = ""
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface {
     private val TAG = MainActivity::class.qualifiedName
@@ -244,13 +245,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         }
 
         // Start discovery process
-        if (BluetoothAdapter.getDefaultAdapter().startDiscovery()) {
-            Log.d(TAG,"je suis dans le send ")
-            val dialog = SelectDeviceDialog()
 
-            dialog.show(supportFragmentManager, "select_device")
-        }
 
+        val dialog = SelectDeviceDialog()
+        dialog.show(supportFragmentManager, "select_device")
 
 
         if (isFriendShow) {
@@ -260,13 +258,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
             isFriendShow = true
 
 
+            var friends = viewModel.getUsers()
 
-
+            val adapter = FriendsAdapter(this, ArrayList(friends))
+            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = adapter
             findViewById<ListView>(R.id.friendsListRecyclerview).visibility = View.VISIBLE
-            findViewById<ListView>(R.id.friendsListRecyclerview).adapter = mArrayAdapter
-
-
-
             BluetoothServerController(this).start()
         }
 
@@ -345,12 +341,13 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
         Log.i("client", "Connecting")
         Log.i("client", "send to :"+devices.toString())
         this.socket.connect()
-
+        val mmBuffer: ByteArray = ByteArray(1024)
         Log.i("client", "Sending")
         val outputStream = this.socket.outputStream
         val inputStream = this.socket.inputStream
         try {
-            outputStream.write(message.toByteArray())
+
+            outputStream.write(mmBuffer)
             outputStream.flush()
             Log.i("client", "Sent")
         } catch(e: Exception) {
