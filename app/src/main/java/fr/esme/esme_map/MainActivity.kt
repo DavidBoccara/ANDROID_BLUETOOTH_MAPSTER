@@ -424,14 +424,22 @@ class BluetoothServer(private val activity: MainActivity, private val socket: Bl
             inputStream.read(bytes, 0, available)
             val text = String(bytes)
             Log.i("server", "Message received")
+
+            if (text.isNotEmpty()){
+                val position = Gson().fromJson(text,Position::class.java)
+                Log.i("server", "OK")
+
+            }
+
             Log.i("server", text)
             //activity.appendText(text)
         } catch (e: Exception) {
             Log.e("client", "Cannot read data", e)
-        } finally {
+        }
+        /**finally {
             inputStream.close()
             outputStream.close()
             socket.close()
-        }
+        }**/
     }
 }
