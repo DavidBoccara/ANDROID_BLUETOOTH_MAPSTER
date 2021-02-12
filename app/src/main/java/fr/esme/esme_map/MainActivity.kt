@@ -8,29 +8,18 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
-import android.content.ContentValues
-import android.content.ContentValues.TAG
-import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.View
-import android.view.View.inflate
-import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ListView
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.res.ColorStateListInflaterCompat.inflate
-import androidx.core.graphics.drawable.DrawableCompat.inflate
 import androidx.fragment.app.DialogFragment
 import androidx.room.Room
 import com.google.android.gms.location.*
@@ -50,13 +39,20 @@ import fr.esme.esme_map.model.User
 import java.io.IOException
 import java.lang.Exception
 import java.util.*
+import androidx.lifecycle.MutableLiveData
 
 var devices = java.util.ArrayList<BluetoothDevice>()
 var devicesMap = HashMap<String, BluetoothDevice>()
 var mArrayAdapter: ArrayAdapter<String>? = null
 val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
-var message = ""
+var message = "toto"
 var statei = 0
+var myPosition : Position? = null
+val getUserPositionLiveData: MutableLiveData<Position> by lazy {
+    MutableLiveData<Position>()
+}
+
+
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface {
     private val TAG = MainActivity::class.qualifiedName
@@ -67,8 +63,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
     private val USER_ACTIVITY = 2
     private lateinit var fusedLocationClient : FusedLocationProviderClient
 
+    private var textView: String? = null
+
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        viewModel.getPOIFromViewModel()
         viewModel.getPOIFromViewModel()
         viewModel.getPositionFromViewModel()
 
@@ -95,8 +95,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
             showPOI(Gson().fromJson<POI>(t, POI::class.java))
         }
     }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -142,6 +140,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
         viewModel.myPositionLiveData.observe(this, { position ->
             showMyPosition(position)
+            myPosition = position
         })
 
 
@@ -185,6 +184,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
             locationCallback,
             Looper.getMainLooper()
         )
+
+        //getUser
+        getUserPositionLiveData.observe(this,{poi->
+            showPOI(POI(1,"copain",12,poi!!))
+        })
     }
 
     //TODO show POI
@@ -206,6 +210,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         )
     }
 
+    var test = false
     //TODO show MyPosition
     fun showMyPosition(position: Position) {
         val myPos = LatLng(position.latitude, position.longitude)
@@ -273,6 +278,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
     }
 
+
+
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart")
@@ -284,7 +291,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         Log.d(TAG, "onResume")
     }
 
-    var myPosition : Location? = null
 
     override fun onStop() {
         super.onStop()
@@ -345,8 +351,11 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
 
         Log.i("client", "Connecting")
         Log.i("client", "send to :"+devices.toString())
-        this.socket.connect()
-        val mmBuffer: ByteArray = ByteArray(1024)
+        if(!this.socket.isConnected){
+            this.socket.connect()
+        }
+
+        val mmBuffer: ByteArray = Gson().toJson(myPosition).toByteArray()
         Log.i("client", "Sending")
         val outputStream = this.socket.outputStream
         val inputStream = this.socket.inputStream
@@ -359,10 +368,6 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
             statei=0
         } catch(e: Exception) {
             Log.e("client", "Cannot send", e)
-        } finally {
-            outputStream.close()
-            inputStream.close()
-            this.socket.close()
         }
     }
 
@@ -412,6 +417,8 @@ class BluetoothServerController(activity: MainActivity) : Thread() {
     }
 }
 
+
+
 class BluetoothServer(private val activity: MainActivity, private val socket: BluetoothSocket): Thread() {
     private val inputStream = this.socket.inputStream
     private val outputStream = this.socket.outputStream
@@ -426,20 +433,19 @@ class BluetoothServer(private val activity: MainActivity, private val socket: Bl
             Log.i("server", "Message received")
 
             if (text.isNotEmpty()){
-                val position = Gson().fromJson(text,Position::class.java)
+                activity.runOnUiThread {
+                    getUserPositionLiveData.value = Gson().fromJson<Position>(text, Position::class.java)
+                }
                 Log.i("server", "OK")
 
             }
-
-            Log.i("server", text)
-            //activity.appendText(text)
         } catch (e: Exception) {
             Log.e("client", "Cannot read data", e)
         }
         /**finally {
-            inputStream.close()
-            outputStream.close()
-            socket.close()
+        inputStream.close()
+        outputStream.close()
+        socket.close()
         }**/
     }
 }
