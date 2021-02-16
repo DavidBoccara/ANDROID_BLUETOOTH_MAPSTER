@@ -17,6 +17,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.ListPopupWindow
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -40,6 +41,8 @@ import java.io.IOException
 import java.lang.Exception
 import java.util.*
 import androidx.lifecycle.MutableLiveData
+import com.google.gson.reflect.TypeToken
+import java.lang.NullPointerException
 
 var devices = java.util.ArrayList<BluetoothDevice>()
 var devicesMap = HashMap<String, BluetoothDevice>()
@@ -47,9 +50,14 @@ var mArrayAdapter: ArrayAdapter<String>? = null
 val uuid: UUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
 var message = "toto"
 var statei = 0
+
 var myPosition : Position? = null
+var myPOIs : List<POI>? = null
 val getUserPositionLiveData: MutableLiveData<Position> by lazy {
     MutableLiveData<Position>()
+}
+val getUserpoisLiveData: MutableLiveData<List<POI>> by lazy {
+    MutableLiveData<List<POI>>()
 }
 
 
@@ -136,12 +144,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
 
         viewModel.poisLiveData.observe(this, { listPOIs ->
             showPOIs(listPOIs)
+            myPOIs = listPOIs
+
+
+
         })
 
         viewModel.myPositionLiveData.observe(this, { position ->
             showMyPosition(position)
             myPosition = position
         })
+
+
 
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -188,6 +202,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, UserClickInterface
         //getUser
         getUserPositionLiveData.observe(this,{poi->
             showPOI(POI(1,"copain",12,poi!!))
+        })
+        getUserpoisLiveData.observe(this,{pois ->
+            showPOIs(pois)
         })
     }
 
@@ -355,7 +372,7 @@ class BluetoothClient(device: BluetoothDevice): Thread() {
             this.socket.connect()
         }
 
-        val mmBuffer: ByteArray = Gson().toJson(myPosition).toByteArray()
+        val mmBuffer: ByteArray = Gson().toJson(myPOIs).toByteArray()
         Log.i("client", "Sending")
         val outputStream = this.socket.outputStream
         val inputStream = this.socket.inputStream
@@ -425,6 +442,8 @@ class BluetoothServer(private val activity: MainActivity, private val socket: Bl
 
     override fun run() {
         try {
+            Thread.sleep(1000)
+
             val available = inputStream.available()
             val bytes = ByteArray(available)
             Log.i("server", "Reading")
@@ -434,7 +453,7 @@ class BluetoothServer(private val activity: MainActivity, private val socket: Bl
 
             if (text.isNotEmpty()){
                 activity.runOnUiThread {
-                    getUserPositionLiveData.value = Gson().fromJson<Position>(text, Position::class.java)
+                    getUserpoisLiveData.value = Gson().fromJson<List<POI>>(text, object : TypeToken<List<POI>>() {}.type)
                 }
                 Log.i("server", "OK")
 
