@@ -7,14 +7,12 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="-74dp"
-        tools:layout_editor_absoluteY="-110dp" />
+        android:layout_height="match_parent" />
+
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -28,33 +26,23 @@
         <ListView
             android:id="@+id/friendsListRecyclerview"
             android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:background="#e67e22"/>
+            android:layout_height="wrap_content"/>
 
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/showFriendsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|bottom"
+            android:src="@drawable/ic_sensors_black_18dp"
+            android:layout_margin="16dp"
+            app:backgroundTint="@color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent" />
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="186dp"
-        tools:layout_editor_absoluteY="583dp"
-        tools:ignore="MissingConstraints" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/showFriendsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="end|bottom"
-        android:layout_margin="16dp"
-        android:layout_marginBottom="288dp"
-        android:src="@drawable/ic_sensors_black_18dp"
-        app:backgroundTint="@color/white"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

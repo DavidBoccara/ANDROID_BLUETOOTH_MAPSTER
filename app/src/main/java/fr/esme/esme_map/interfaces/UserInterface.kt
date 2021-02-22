@@ -1,5 +1,6 @@
 package fr.esme.esme_map.interfaces
 
+import android.bluetooth.BluetoothDevice
 import fr.esme.esme_map.model.POI
 import fr.esme.esme_map.model.Position
 import fr.esme.esme_map.model.Run
@@ -11,5 +12,7 @@ interface UserInterface {
     fun getRuns() : List<Run>
     fun getUsers() : List<User>
     fun getMyPosition() : Position
+    //bluetooth
+    //fun getIdlist() : List<BluetoothDevice>
 
 }

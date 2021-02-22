@@ -43,9 +43,9 @@ class FriendsAdapter(
         image = convertView.findViewById(R.id.userImage)
         Picasso.get().load(arrayList[position].imageUrl).into(image);
 
-        image.setOnClickListener {
-            (context as UserClickInterface).OnUserClick(arrayList[position])
-        }
+        //image.setOnClickListener {
+        //(context as UserClickInterface).OnUserClick(arrayList[position])
+        //}
 
         return convertView
     }

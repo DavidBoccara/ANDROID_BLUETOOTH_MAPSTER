@@ -1,9 +1,9 @@
 package fr.esme.esme_map.interfaces
 
-import fr.esme.esme_map.model.User
+import android.bluetooth.BluetoothDevice
 
 interface UserClickInterface {
 
-    fun OnUserClick (user : User)
+    fun OnUserClick (LeDeviceListAdapter: BluetoothDevice)
 
 }
