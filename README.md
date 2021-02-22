@@ -13,5 +13,4 @@ Une fois les POI générés vous pouvez appuyer sur le bouton situé en bas à d
 # Extra point
 En naviguant dans les différentes branches, vous pouvez retrouver la branche BLE_Working qui correspond à nos travaux sur le BLE.  
 
-
-![alt text]https://github.com/Toshley2675/TP_android/blob/master/image/bluetoothkotlintp.gif?raw=true)
+![alt text](https://github.com/Toshley2675/TP_android/blob/master/image/bluetoothkotlintp.gif?raw=true)
